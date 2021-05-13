@@ -1,0 +1,227 @@
+#include <Wire.h>               
+#include "SSD1306Wire.h"  
+
+#define CAYENNE_PRINT Serial
+#include <CayenneMQTTESP32.h>
+#include <WiFi.h> // para ESP32
+
+// Conectar a Red WiFi 
+char ssid[] = "TP-Link_03EE";
+char wifiPassword[] = "67844432";
+
+// Cayenne autenticación. Se obtiene 
+//del registro cuando se crea un proyecto.
+char username[] = "b3695540-e648-11ea-883c-638d8ce4c23d";
+char password[] = "ca3aeb8c4bcd369d38a5d56a3521d3881027303e";
+char clientID[] = "dfcf1250-f093-11ea-a67f-15e30d90bbf4";
+
+#define trigPin 4
+#define echoPin 15
+#define LED_PIN 2
+#define der1 13 
+#define der2 12
+#define izq1 14 
+#define izq2 27
+
+// emplea el puerto I2C: SDA = PIN 21, SCL = PIN 22
+SSD1306Wire display(0x3c, SDA, SCL);   
+
+// variable con valor a mostrar
+int distancia;
+float kp=0, ki=0, kd=0, T=0.264,e=0,e1=0,e2=0;
+int deseada=20, In=0,error=0,uk1=0, encendido=0;
+
+const int freq = 490;
+const int ledChannel = 0;
+const int resolution = 8;
+const int ledPin = 26; 
+const int ledPin1 = 25;
+
+unsigned long lastmillis=0;
+
+int control=0;
+float x1a=0;
+float  k2=98.347, k1=95.69;
+float x1=0, x2=0;
+int F=0;
+void setup() {
+  ledcSetup(ledChannel, freq, resolution);
+  ledcAttachPin(ledPin, ledChannel);
+  ledcAttachPin(ledPin1, ledChannel);
+  
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(der1, OUTPUT);
+  pinMode(izq1, OUTPUT);
+  pinMode(der2, OUTPUT);
+  pinMode(izq2, OUTPUT);
+  Serial.begin(115200);
+  display.init();
+
+  display.flipScreenVertically();
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.setFont(Orbitron_Medium_10);
+
+    WiFi.begin(ssid, wifiPassword);
+  while (WiFi.status() != WL_CONNECTED) 
+    {
+      delay(500);
+      Serial.print(".");
+    }
+  Serial.println("");
+  Serial.println("Conectado a la red WiFi");
+  Cayenne.begin(username, password, clientID, ssid, wifiPassword);
+}
+
+void loop() {
+  Cayenne.loop();
+  int distancia= Distance_measure();
+  Serial.println(distancia);
+  display.clear();
+  display.drawString(14, 16, String(distancia) + "cm");
+  
+  if (control==0)
+  {
+    Serial.println("Control PID");
+    PID();
+  }
+  else
+  {
+    Serial.println("Control Retroalimentacion de estados");
+    StateSpace();
+  }
+
+ 
+}
+int  Distance_measure(){
+  long duration;
+  int distance;
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  return distance= duration*0.034/2;
+  }
+
+
+void PID(){
+  error=(deseada - distancia);
+  In=uk1+(kp+kd/T+ki*T)*error+(-kp-2*kd/T)*e1+(kd/T)*e2;
+
+  uk1=In;
+  e2=e1;
+  e1=error;
+  if (In>255)
+  {
+    In=255;
+  }
+  else if (In<-255)
+  {
+    In=-255;
+  }
+
+  if (encendido == 1)
+  {
+     Serial.println("encendido");
+    ledcWrite(ledChannel, abs(In));
+  if (error>0)
+  {
+    digitalWrite(der1,0);
+    digitalWrite(izq1,0);
+    digitalWrite(der2,1);
+    digitalWrite(izq2,1);
+  }
+  else
+  {
+    digitalWrite(der1,1);
+    digitalWrite(izq1,1);
+    digitalWrite(der2,0);
+    digitalWrite(izq2,0);
+  }
+  }
+  else
+  {
+    digitalWrite(der1,0);
+    digitalWrite(izq1,0);
+    digitalWrite(der2,0);
+    digitalWrite(izq2,0);
+  }
+  display.drawString(60, 16, "PID");
+  display.drawString(90, 16, String(encendido));
+  display.drawString(30, 32, "Kp= " + String(kp));
+  display.drawString(90, 32, "Ki= " + String(ki));
+  display.drawString(64, 48, "Kd= " + String(kd));
+  display.display();
+}
+
+void StateSpace()
+{
+  x1=Distance_measure();
+  x2=(x1-x1a)/T;
+  F= (int) (-1*(k1*(x1-deseada)+k2*x2));
+  x1a=x1;
+    if (millis() - lastmillis > 1000) 
+        {
+          lastmillis = millis();
+          Serial.println("F= " + String(F));
+          Serial.println("Dist= " + String(x1) + " cm");
+          
+         }
+  if (encendido==1)
+  {
+    Serial.println("encendido");
+  ledcWrite(ledChannel, abs(F));
+  if (F>0)
+  { 
+    digitalWrite(der1,0);
+    digitalWrite(izq1,0);
+    digitalWrite(der2,1);
+    digitalWrite(izq2,1);
+  }
+  else
+  {
+    digitalWrite(der1,1);
+    digitalWrite(izq1,1);
+    digitalWrite(der2,0);
+    digitalWrite(izq2,0);
+  }
+  }
+  else 
+  {
+    digitalWrite(der1,0);
+    digitalWrite(izq1,0);
+    digitalWrite(der2,0);
+    digitalWrite(izq2,0);
+  }
+  display.drawString(60, 16, "State");
+  display.drawString(90, 16, String(encendido));
+  display.drawString(30, 32, "K1= " + String(k1));
+  display.drawString(90, 32, "K2= " + String(k2));
+  display.display();
+
+}
+  CAYENNE_IN(0)
+{
+  encendido = getValue.asInt();
+  digitalWrite(LED_PIN, encendido);
+}
+  CAYENNE_IN(1)
+{kp = getValue.asDouble();}
+
+ CAYENNE_IN(2)
+{ki = getValue.asDouble();;}
+
+ CAYENNE_IN(3)
+{kd = getValue.asDouble();}
+
+ CAYENNE_IN(4)
+{control = getValue.asInt();}
+
+ CAYENNE_IN(5)
+{k1 = getValue.asDouble();}
+
+ CAYENNE_IN(6)
+{k2 = getValue.asDouble();}
