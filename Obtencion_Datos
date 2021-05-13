@@ -1,0 +1,126 @@
+#include <SPI.h>
+#include <SD.h>
+
+File logFile;
+File logFile1;
+File logFile2;
+
+#define trigPin 3
+#define echoPin 2
+#define der1 8 //Motores  derecha 
+#define der2 7
+#define izq1 5 //Motores izquierda
+#define izq2 4
+
+
+unsigned long lastmillis=0,lastmillis1=0;
+int velocidad=0;
+
+void setup() {
+  
+ // Serial.begin (9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(der1, OUTPUT);
+  pinMode(izq1, OUTPUT);
+  pinMode(9,OUTPUT);
+  pinMode(6,OUTPUT);
+  pinMode(10, OUTPUT);
+  Serial.print("Iniciando SD ...");
+  if (!SD.begin(10)) // PIN ASIGNADO A CS
+  {
+    Serial.println("Error al iniciar");
+    return;
+  }
+  Serial.println("Iniciado correctamente");
+  lastmillis = millis();
+  
+}
+
+void loop() {
+  
+ int distancia= Distance_measure();
+    
+      if (millis() - lastmillis > 100) 
+        {
+          lastmillis = millis();
+          logFile = SD.open("Input", FILE_WRITE);
+          logFile1 = SD.open("Time", FILE_WRITE);
+          logFile2 = SD.open("Output", FILE_WRITE);
+
+           if (millis() - lastmillis1 > 1000) 
+           {
+            lastmillis1 = millis();
+            velocidad =random(-255,255);
+           }
+           
+            if (logFile) 
+            {
+      
+            logFile.println(velocidad);
+            logFile.close();
+            } 
+             else {
+                    Serial.println("Error al abrir el archivo Input");
+                   }
+            
+            
+            if (logFile1) { 
+        
+            logFile1.println(millis());
+            logFile1.close();
+  
+            }
+             else {
+                  Serial.println("Error al abrir el archivo Time");
+                    } 
+               
+            
+            if (logFile2) { 
+        
+            logFile2.println(distancia);
+            logFile2.close();
+  
+            }
+             else {
+                  Serial.println("Error al abrir el archivo Output");
+                    } 
+               
+            }    
+              
+
+                analogWrite(9,abs(velocidad));
+                analogWrite(6,abs(velocidad));
+  
+            if (velocidad > 0)
+             {
+                
+                digitalWrite(der1,1);
+                digitalWrite(izq1,1);
+                digitalWrite(der2,0);
+                digitalWrite(izq2,0);
+                
+ 
+            }
+            else  
+            {
+                digitalWrite(der1,0);
+                digitalWrite(izq1,0);
+                digitalWrite(der2,1);
+                digitalWrite(izq2,1);
+               
+            }     
+                
+}
+
+int  Distance_measure(){
+  long duration, distance;
+  digitalWrite(trigPin, LOW);  
+  delayMicroseconds(2); 
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  return distance = (duration/2) / 29.1;
+
+  }
