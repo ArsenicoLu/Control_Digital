@@ -1,0 +1,80 @@
+#define trigPin 3
+#define echoPin 2
+#define der1 8 //Motores a la derecha (cerca del logo Arduino avanza hacia adelante)
+#define der2 7
+#define izq1 5 //Motores hacia la izq avanza hacia adelante
+#define izq2 4
+
+
+
+float  kp=-14.8573, ki=-6.8999,kd=0, T=00.264,e=0,e1=0,e2=0;
+int deseada=20, In=0,error=0,uk1=0;
+unsigned long lastmillis=0;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(der1, OUTPUT);
+  pinMode(izq1, OUTPUT);
+  pinMode(9,OUTPUT);
+  pinMode(6,OUTPUT);
+  pinMode(10, OUTPUT);
+
+}
+
+void loop() {
+  int distancia= Distance_measure();
+  error=(deseada - distancia);
+  In=uk1+(kp+ki*T+kd/T)*error+(-2*kd/T-kp)*e1+(kd/T)*e2;
+  uk1=In;
+  e2=e1;
+  e1=error;
+  
+  if (In>=255)
+  {
+    In=255;
+  }
+  else if (In<=-255)
+  {
+    In=-255;
+  }
+  analogWrite(9,abs(In));
+  analogWrite(6,abs(In));  
+
+  if (error>0)
+  {
+    digitalWrite(der1,0);
+    digitalWrite(izq1,0);
+    digitalWrite(der2,1);
+    digitalWrite(izq2,1);
+  }
+  else
+  {
+    digitalWrite(der1,1);
+    digitalWrite(izq1,1);
+    digitalWrite(der2,0);
+    digitalWrite(izq2,0);
+  }
+  if (millis() - lastmillis > 1000) 
+        {
+          lastmillis = millis();
+          Serial.print("Distancia = ");
+          Serial.println(distancia);
+          Serial.print("Error = ");
+          Serial.println(error);
+          Serial.print("Entrada = ");
+          Serial.println(In);
+        }
+}
+
+int  Distance_measure(){
+  long duration, distance;
+  digitalWrite(trigPin, LOW);  
+  delayMicroseconds(2); 
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10); 
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  return distance = (duration/2) / 29.1;
+  }
