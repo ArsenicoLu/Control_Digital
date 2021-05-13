@@ -1,0 +1,68 @@
+#define trigPin 3
+#define echoPin 2
+#define der1 8 
+#define der2 7
+#define izq1 5 
+#define izq2 4
+
+float  k2=7.347, k1=4.69;
+float x1=0, x2=0;
+int F=0;
+const float r= 15; //distancia deseada
+const float T=0.264;
+float x1a=0;
+unsigned long lastmillis=0;
+void setup() {
+    Serial.begin(9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(der1, OUTPUT);
+  pinMode(izq1, OUTPUT);
+  pinMode(9,OUTPUT);
+  pinMode(6,OUTPUT);
+  pinMode(10, OUTPUT);
+  // put your setup code here, to run once:
+
+}
+
+void loop() {
+  
+  x1=Distance_measure();
+  x2=(x1-x1a)/T;
+  F= (int) (-1*(k1*(x1-r)+k2*x2));
+  x1a=x1;
+    if (millis() - lastmillis > 1000) 
+        {
+          lastmillis = millis();
+          Serial.println("F= " + String(F));
+          Serial.println("Dist= " + String(x1) + " cm");
+          
+         }
+  analogWrite(9,abs(F));
+  analogWrite(6,abs(F)); 
+  if (F>0)
+  { 
+    digitalWrite(der1,0);
+    digitalWrite(izq1,0);
+    digitalWrite(der2,1);
+    digitalWrite(izq2,1);
+  }
+  else
+  {
+    digitalWrite(der1,1);
+    digitalWrite(izq1,1);
+    digitalWrite(der2,0);
+    digitalWrite(izq2,0);
+  }
+}
+
+float  Distance_measure(){
+  long duration, distance;
+  digitalWrite(trigPin, LOW);  
+  delayMicroseconds(2); 
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10); 
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  return distance = (duration/2) / 29.1;
+  }
