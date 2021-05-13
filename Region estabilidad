@@ -1,0 +1,33 @@
+w=0:0.01:100;
+ki=10;
+kpx=(0.276916E4.*w-0.139645E4.*w.^3)./(0.670763E3.*w+0.1E1 .*w .^3);
+kdx=0.646831E2+(ki./w.^2)-(0.362737E5./(0.670763E3+0.1E1 .*w .^2));
+
+%Gs=((-0.4004E0)+(-0.1546E-1) .s) .(0.1653E1+0.431E1 .*s+s . ^2) . ^(-1);
+
+kd0=-100:1:100;
+kp0=4.12*ones(1,length(kd0));
+kpi=-10:1:10;
+kdi=66.66*ones(1,length(kpi));
+set(gcf,'color','w');
+plot(kpx,kdx,'b') % w vale todo menos 0 e infinito
+%hold on
+%plot(kp0,kd0,'r') % w=0
+hold on
+plot(kpi,kdi,'g')
+xlabel('$k_p$','Interpreter','Latex','FontSize', 16)
+ylabel('$k_d$','Interpreter','Latex','FontSize', 16)
+axis([-20 100 -20 100])
+
+[kp,kd]=ginput(1);
+s = tf('s');
+P=((-0.01546*s - 0.4004)/((s^2 + 4.31*s + 1.653)));
+C=kp+kd*s+ki/s;
+T=feedback(P*C,1);
+[y,t]=step(T,300);
+
+figure
+set(gcf,'color','w');
+plot(t,y)
+xlabel('$t$','Interpreter','Latex','FontSize', 16)
+ylabel('$y(t)$','Interpreter','Latex','FontSize', 16)
